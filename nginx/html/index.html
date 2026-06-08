@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AC Skinpack Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-color: #f8fafc;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-color);
+            background-image: radial-gradient(circle at top right, rgba(99, 102, 241, 0.2), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(236, 72, 153, 0.2), transparent 40%);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow: hidden;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+        h1 {
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p {
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+        .drop-zone {
+            border: 2px dashed #475569;
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(15, 23, 42, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        .drop-zone svg {
+            width: 48px;
+            height: 48px;
+            fill: #94a3b8;
+            margin-bottom: 1rem;
+            transition: fill 0.3s ease;
+        }
+        .drop-zone:hover svg, .drop-zone.dragover svg {
+            fill: var(--primary);
+        }
+        .drop-zone input[type="file"] {
+            display: none;
+        }
+        .file-info {
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 500;
+            display: none;
+        }
+        .btn {
+            margin-top: 2rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s, transform 0.1s;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .btn.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .btn.active:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+        .progress-container {
+            margin-top: 1.5rem;
+            width: 100%;
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #6366f1, #ec4899);
+            transition: width 0.2s ease;
+        }
+        .status-msg {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            min-height: 20px;
+        }
+        .status-success { color: #10b981; }
+        .status-error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Upload Your Skin</h1>
+        <p>Drag and drop your .zip or .7z file to add it to the server.</p>
+
+        <div class="drop-zone" id="dropZone">
+            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            <div id="dropText">Click or drag your archive here<br><small>(large files accepted)</small></div>
+            <input type="file" id="fileInput" accept=".zip,.7z,.rar">
+        </div>
+
+        <div class="file-info" id="fileInfo"></div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div class="status-msg" id="statusMsg"></div>
+
+        <button class="btn" id="uploadBtn">Send to Server</button>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const statusMsg = document.getElementById('statusMsg');
+
+        let selectedFile = null;
+
+        // Get params from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const discordUserId = urlParams.get('user_id') || '0';
+        const discordUsername = urlParams.get('username') || 'Web Player';
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleFiles(files);
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                selectedFile = files[0];
+                fileInfo.style.display = 'block';
+                fileInfo.textContent = selectedFile.name + ` (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+                uploadBtn.classList.add('active');
+                statusMsg.textContent = '';
+                statusMsg.className = 'status-msg';
+            }
+        }
+
+        uploadBtn.addEventListener('click', () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('discord_user_id', discordUserId);
+            formData.append('discord_username', discordUsername);
+
+            uploadBtn.classList.remove('active');
+            uploadBtn.textContent = 'Uploading...';
+            progressContainer.style.display = 'block';
+            statusMsg.textContent = 'Transferring archive...';
+            statusMsg.className = 'status-msg';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/upload', true);
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percentComplete + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    statusMsg.textContent = '✅ Success! Your skin has been validated. You can close this page.';
+                    statusMsg.className = 'status-msg status-success';
+                    uploadBtn.textContent = 'Done';
+                } else {
+                    let err = "Unknown error";
+                    try {
+                        err = JSON.parse(xhr.responseText).detail || err;
+                    } catch(e) {}
+                    statusMsg.textContent = '❌ Error: ' + err;
+                    statusMsg.className = 'status-msg status-error';
+                    uploadBtn.textContent = 'Try Again';
+                    uploadBtn.classList.add('active');
+                }
+            };
+
+            xhr.onerror = function() {
+                statusMsg.textContent = '❌ Server connection error.';
+                statusMsg.className = 'status-msg status-error';
+                uploadBtn.textContent = 'Try Again';
+                uploadBtn.classList.add('active');
+            };
+
+            xhr.send(formData);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "championnat_f1": [
+    "rss_formula_hybrid_2022",
+    "vrc_formula_alpha"
+  ],
+  "championnat_gt3": [
+    "ks_porsche_911_gt3_r",
+    "ks_mclaren_650s_gt3",
+    "ks_audi_r8_lms",
+    "mercedes_amg_gt3"
+  ],
+  "exemple_cup": [
+    "gpl67_lotus_49"
+  ]
+}

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+      - public_packs:/var/www/packs:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - skinpack_net
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-skinpack}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - skinpack_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    # Limite pour éviter que la compression ne fasse crasher la machine hôte
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    volumes:
+      - public_packs:/app/public_packs:rw
+      - tmp_builds:/app/tmp_builds:rw
+      - previews:/app/previews:rw
+      - ./backend/config:/app/config:ro
+    environment:
+      - API_TOKEN=${API_TOKEN}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-skinpack}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - skinpack_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  bot:
+    build:
+      context: ./bot
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - BACKEND_URL=http://backend:8000
+      - API_TOKEN=${API_TOKEN}
+      - SKIN_CHANNEL_ID=${SKIN_CHANNEL_ID}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - skinpack_net
+
+volumes:
+  public_packs:
+  postgres_data:
+  tmp_builds:
+  previews:
+
+networks:
+  skinpack_net:
