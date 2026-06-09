@@ -149,6 +149,7 @@ async def upload_skin(interaction: discord.Interaction):
     )
 
 @bot.tree.command(name="build_pack", description="Ask the server to compile the final .zip pack")
+@app_commands.default_permissions(administrator=True)
 @app_commands.describe(pack_name="The pack to compile (optional, if omitted, builds all pending packs)")
 async def build_pack(interaction: discord.Interaction, pack_name: typing.Optional[str] = None):
     if not is_correct_channel(interaction):
@@ -202,7 +203,7 @@ async def build_pack(interaction: discord.Interaction, pack_name: typing.Optiona
     except Exception as e:
         await interaction.followup.send(f"❌ Error communicating with the backend: {e}")
 
-pack_group = app_commands.Group(name="pack", description="Manage championships and their allowed cars")
+pack_group = app_commands.Group(name="pack", description="Manage championships and their allowed cars", default_permissions=discord.Permissions(administrator=True))
 bot.tree.add_command(pack_group)
 
 @pack_group.command(name="list", description="List all championships and their cars")
