@@ -84,11 +84,11 @@ Once the bot is running and invited to your server, you can use the following sl
 
 ### Configuration Commands
 * `/config view` : View the currently active automatic upload mode.
-* `/config set_mode <mode>` : Change the automatic behavior for new uploads. Available modes:
-  * `direct`: Uploads to ACSM directly (no automatic zip pack built).
-  * `pack_only`: Compiles the downloadable .zip pack for players (no direct server upload).
-  * `both`: Does both instantly.
-  * `manual`: Saves the skin to the database only (requires manual `/build_pack`).
+* `/config set_mode <mode>` : Change the automatic behavior when a user uploads a new skin. This is highly useful for managing server load or controlling when skinpacks are distributed. Available modes:
+  * ➡️ **`direct` (ACSM Only):** The uploaded skin is instantly extracted and sent directly to the Assetto Corsa Server Manager (ACSM) directory. It becomes available on the live game server immediately. However, the downloadable `.zip` pack for other players is *not* rebuilt automatically, saving server CPU.
+  * 📦 **`pack_only` (.zip Pack Only):** The bot automatically recompiles the complete `.zip` skinpack for players to download via Content Manager. The skin is *not* sent to the live game server automatically.
+  * 🚀 **`both` (ACSM + Pack):** Performs both actions instantly. The skin is sent to the game server AND the `.zip` pack is rebuilt. Perfect for keeping both the server and players completely up to date in real-time.
+  * ⏸️ **`manual` (No auto actions):** The uploaded skin is only saved in the database. No extraction to ACSM and no pack compilation happens automatically. You will need to manually use `/build_pack` to deploy the skins later (ideal during busy races where you want zero background processing).
 
 ## 📁 File Structure
 
