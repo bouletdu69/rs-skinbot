@@ -10,6 +10,8 @@ A complete automated solution for managing, validating, and compiling Assetto Co
 * **Dynamic Pack Management:** Admins can create and manage championships directly from Discord using slash commands (no need to edit JSON files manually).
 * **Automated Compilation:** With a simple command, the bot aggregates all uploaded skins for a specific championship into a single, ready-to-use `.zip` file for players to download via Content Manager.
 * **Smart Zipping:** The compilation process is smart enough to include all historical skins for a pack, preventing lost uploads and ensuring players always download the complete pack.
+* **ACSM Integration:** Automatically extracts uploaded skins directly to the Assetto Corsa Server Manager (ACSM) cars directory so they are instantly playable on your server.
+* **Configurable Upload Modes:** Server admins can configure what happens automatically when a new skin is uploaded (`direct` ACSM upload, `pack_only` zip build, `both`, or `manual`).
 
 ## 🏗️ Architecture
 
@@ -52,6 +54,9 @@ The project is fully containerized using Docker and is split into 4 microservice
    
    # Public URL for the bot (used for generating upload links and download links)
    PUBLIC_URL=http://your-domain.com
+
+   # Optional: Path to Assetto Corsa Server Manager (ACSM) cars directory for direct upload mode
+   ACSM_CARS_DIR=/home/rs/docker/acsm/server/assetto/content/cars
    ```
 
 3. **Start the services:**
@@ -76,6 +81,14 @@ Once the bot is running and invited to your server, you can use the following sl
 * `/pack delete <pack_name>` : Deletes an existing championship.
 * `/pack add_car <pack_name> <car_name>` : Adds an allowed car to a championship (must match the exact AC folder name).
 * `/pack remove_car <pack_name> <car_name>` : Removes a car from a championship.
+
+### Configuration Commands
+* `/config view` : View the currently active automatic upload mode.
+* `/config set_mode <mode>` : Change the automatic behavior for new uploads. Available modes:
+  * `direct`: Uploads to ACSM directly (no automatic zip pack built).
+  * `pack_only`: Compiles the downloadable .zip pack for players (no direct server upload).
+  * `both`: Does both instantly.
+  * `manual`: Saves the skin to the database only (requires manual `/build_pack`).
 
 ## 📁 File Structure
 
