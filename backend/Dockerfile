@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-RUN addgroup --system appgroup && adduser --system --group appuser
+RUN addgroup --system --gid 1000 appgroup && adduser --system --uid 1000 --ingroup appgroup appuser
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

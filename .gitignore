@@ -53,3 +53,4 @@ Icon
 # IDE
 .vscode/
 .idea/
+*.exp
