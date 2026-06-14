@@ -1,14 +1,14 @@
 import os
 import requests
 import uuid
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from .database import engine, Base, get_db, SessionLocal
 from .models import SkinUpload
-from .builder import validate_and_extract_preview, build_pack_task, load_packs, save_packs
+from .builder import validate_and_extract_preview, build_pack_task, load_packs, save_packs, extract_to_acsm, load_settings, save_settings
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Create tables
@@ -54,6 +54,7 @@ def health_check():
 
 @app.post("/upload")
 async def upload_skin(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     discord_user_id: str = Form(...),
     discord_username: str = Form(...),
@@ -105,6 +106,19 @@ async def upload_skin(
         }, timeout=5)
     except Exception as e:
         print(f"Failed to notify bot: {e}")
+        
+    settings = load_settings()
+    upload_mode = settings.get("upload_mode", "direct")
+    
+    # Extract to ACSM if mode permits
+    acsm_dir = os.getenv("ACSM_CARS_DIR")
+    if acsm_dir and upload_mode in ["direct", "both"]:
+        background_tasks.add_task(extract_to_acsm, save_path, acsm_dir)
+
+    # Build pack if mode permits
+    if upload_mode in ["pack_only", "both"]:
+        background_tasks.add_task(build_pack_task, pack_name)
+
     return {
         "status": "success", 
         "upload_id": upload_id, 
@@ -160,6 +174,18 @@ def get_pack_status(pack_name: str, db: Session = Depends(get_db), token: str = 
     status = "ready" if total == packed and total > 0 else "processing"
     
     return {"pack_name": pack_name, "total_skins": total, "status": status}
+
+@app.get("/settings")
+def get_settings(token: str = Depends(verify_token)):
+    return load_settings()
+
+@app.post("/settings")
+async def update_settings(request: Request, token: str = Depends(verify_token)):
+    data = await request.json()
+    settings = load_settings()
+    settings.update(data)
+    save_settings(settings)
+    return {"status": "success", "settings": settings}
 
 @app.get("/packs")
 def get_packs(token: str = Depends(verify_token)):

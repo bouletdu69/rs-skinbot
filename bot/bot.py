@@ -310,6 +310,65 @@ async def pack_remove_car(interaction: discord.Interaction, pack_name: str, car_
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {e}")
 
+config_group = app_commands.Group(name="config", description="Manage bot configuration and upload modes", default_permissions=discord.Permissions(administrator=True))
+bot.tree.add_command(config_group)
+
+@config_group.command(name="view", description="View current configuration")
+async def config_view(interaction: discord.Interaction):
+    if not is_correct_channel(interaction):
+        await interaction.response.send_message("You cannot use this command in this channel.", ephemeral=True)
+        return
+        
+    await interaction.response.defer()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{BACKEND_URL}/settings", params={"token": API_TOKEN}) as response:
+                if response.status != 200:
+                    await interaction.followup.send(f"❌ Error HTTP {response.status}")
+                    return
+                settings = await response.json()
+                
+        embed = discord.Embed(title="⚙️ Current Configuration", color=discord.Color.green())
+        upload_mode = settings.get("upload_mode", "direct")
+        
+        descriptions = {
+            "direct": "➡️ **Direct Upload to ACSM.** The skin will be instantly available on the game server, but the .zip archive for other players will not be built immediately.",
+            "pack_only": "📦 **Pack Build Only.** Creates the complete .zip file for players to download, but the skin is not sent to the game server.",
+            "both": "🚀 **Both (ACSM + Pack).** The skin is sent directly to the game server AND the .zip pack is built instantly. Perfect if everyone needs to be up to date.",
+            "manual": "⏸️ **Manual (No auto actions).** The skin is just saved in the database. You'll need to use `/build_pack` to send everything later."
+        }
+        
+        embed.add_field(name="Currently Active Upload Mode", value=f"**Mode : `{upload_mode}`**\n\n{descriptions.get(upload_mode, 'Unknown')}", inline=False)
+            
+        await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}")
+
+@config_group.command(name="set_mode", description="Set the automatic rule when a new skin is uploaded")
+@app_commands.describe(mode="Choose how new skins will be processed")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="direct - Sends to game server, no .zip", value="direct"),
+    app_commands.Choice(name="pack_only - Creates players .zip, no server upload", value="pack_only"),
+    app_commands.Choice(name="both - Sends to server AND creates players .zip", value="both"),
+    app_commands.Choice(name="manual - Just stores the skin, no auto action", value="manual")
+])
+async def config_set_mode(interaction: discord.Interaction, mode: app_commands.Choice[str]):
+    if not is_correct_channel(interaction):
+        await interaction.response.send_message("You cannot use this command in this channel.", ephemeral=True)
+        return
+        
+    await interaction.response.defer()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/settings", json={"upload_mode": mode.value}, params={"token": API_TOKEN}) as response:
+                if response.status != 200:
+                    err = await response.json()
+                    await interaction.followup.send(f"❌ Error: {err.get('detail', 'Unknown error')}")
+                    return
+        await interaction.followup.send(f"✅ Upload mode successfully changed to `{mode.value}`!")
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}")
+
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
         print("ERROR: DISCORD_TOKEN is missing!")

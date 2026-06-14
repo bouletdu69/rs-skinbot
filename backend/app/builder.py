@@ -35,6 +35,23 @@ def save_packs(packs_dict):
     with open(config_path, "w") as f:
         json.dump(packs_dict, f, indent=2)
 
+def load_settings():
+    config_path = "/app/config/settings.json"
+    if not os.path.exists(config_path):
+        config_path = "config/settings.json"
+    try:
+        with open(config_path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {"upload_mode": "direct"}
+
+def save_settings(settings_dict):
+    config_path = "/app/config/settings.json"
+    if not os.path.exists("/app/config"):
+        config_path = "config/settings.json"
+    with open(config_path, "w") as f:
+        json.dump(settings_dict, f, indent=2)
+
 def resolve_pack(car_name: str) -> Optional[str]:
     packs = load_packs()
     for pack_name, cars in packs.items():
@@ -164,3 +181,32 @@ def build_pack_task(pack_name: str):
         print(f"Error building pack {pack_name}: {e}")
     finally:
         db.close()
+
+def extract_to_acsm(zip_path: str, acsm_cars_dir: str):
+    """
+    Extracts the content/cars directory from the zip archive directly to the ACSM content/cars folder.
+    """
+    try:
+        acsm_path = Path(acsm_cars_dir)
+        if not acsm_path.exists():
+            print(f"ACSM directory not found: {acsm_cars_dir}")
+            return
+            
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            subprocess.run(["7z", "x", zip_path, f"-o{temp_dir_path}", "-y"], capture_output=True)
+            
+            cars_dir = None
+            for root, dirs, files in os.walk(temp_dir_path):
+                if root.replace('\\', '/').lower().endswith('content/cars'):
+                    cars_dir = Path(root)
+                    break
+            
+            if cars_dir and cars_dir.exists():
+                shutil.copytree(str(cars_dir), str(acsm_path), dirs_exist_ok=True)
+                print(f"Successfully synced {zip_path} to ACSM.")
+            else:
+                print(f"No 'content/cars' structure found in {zip_path} for ACSM sync.")
+                
+    except Exception as e:
+        print(f"Error syncing to ACSM: {e}")
