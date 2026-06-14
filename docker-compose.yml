@@ -46,7 +46,7 @@ services:
       - tmp_builds:/app/tmp_builds:rw
       - previews:/app/previews:rw
       - ./backend/config:/app/config:rw
-      - /home/rs/docker/acsm/server/assetto/content/cars:/app/acsm_cars:rw
+      - ${ACSM_LOCAL_PATH:-/path/to/acsm_cars}:/app/acsm_cars:rw
     environment:
       - API_TOKEN=${API_TOKEN}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}

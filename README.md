@@ -56,7 +56,7 @@ The project is fully containerized using Docker and is split into 4 microservice
    PUBLIC_URL=http://your-domain.com
 
    # Optional: Path to Assetto Corsa Server Manager (ACSM) cars directory for direct upload mode
-   ACSM_CARS_DIR=/home/rs/docker/acsm/server/assetto/content/cars
+   ACSM_LOCAL_PATH=/path/to/your/acsm/server/assetto/content/cars
    ```
 
 3. **Start the services:**
