@@ -65,7 +65,7 @@ async def upload_skin(
     Validates the skin and returns a preview URL if successful.
     """
     if not file.filename.endswith(('.zip', '.7z', '.rar')):
-         raise HTTPException(status_code=400, detail="Seuls les fichiers .zip, .7z, .rar sont autorisés.")
+         raise HTTPException(status_code=400, detail="Only .zip, .7z, .rar files are allowed.")
     
     upload_id = str(uuid.uuid4())
     internal_filename = f"{upload_id}_{file.filename}"
@@ -90,7 +90,7 @@ async def upload_skin(
     
     if not matched_packs:
         os.remove(save_path)
-        raise HTTPException(status_code=400, detail=f"La voiture '{car_dir_name}' n'est autorisée dans aucun championnat actuel")
+        raise HTTPException(status_code=400, detail=f"The car '{car_dir_name}' is not allowed in any current championship")
 
     # Save to database
     is_multiple = len(matched_packs) > 1
@@ -163,10 +163,10 @@ def select_pack(
 ):
     upload = db.query(SkinUpload).filter(SkinUpload.id == upload_id).first()
     if not upload:
-        raise HTTPException(status_code=404, detail="Upload introuvable")
+        raise HTTPException(status_code=404, detail="Upload not found")
         
     if upload.status != "pending_selection":
-        raise HTTPException(status_code=400, detail="Cet upload n'est pas en attente de sélection")
+        raise HTTPException(status_code=400, detail="This upload is not pending a selection")
 
     upload.pack_name = selected_pack
     upload.status = "uploaded"

@@ -69,7 +69,7 @@ class SkinBot(commands.Bot):
         print('------')
 
     async def on_message(self, message):
-        print(f"Message reçu ! Auteur: {message.author}, Bot?: {message.author.bot}, Channel: {message.channel.id}, Fichiers attachés: {len(message.attachments)}")
+        print(f"Message received! Author: {message.author}, Bot?: {message.author.bot}, Channel: {message.channel.id}, Attachments: {len(message.attachments)}")
         if message.author.bot:
             return
 
