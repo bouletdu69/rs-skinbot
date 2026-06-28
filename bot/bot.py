@@ -150,9 +150,24 @@ async def upload_skin(interaction: discord.Interaction):
         ephemeral=True
     )
 
+async def pack_autocomplete(interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{BACKEND_URL}/packs", params={"token": API_TOKEN}) as response:
+                if response.status == 200:
+                    packs = await response.json()
+                    return [
+                        app_commands.Choice(name=pack, value=pack)
+                        for pack in packs.keys() if current.lower() in pack.lower()
+                    ][:25]
+    except Exception:
+        pass
+    return []
+
 @bot.tree.command(name="build_pack", description="Ask the server to compile the final .zip pack")
 @app_commands.default_permissions(administrator=True)
 @app_commands.describe(pack_name="The pack to compile (optional, if omitted, builds all pending packs)")
+@app_commands.autocomplete(pack_name=pack_autocomplete)
 async def build_pack(interaction: discord.Interaction, pack_name: typing.Optional[str] = None):
     if not is_correct_channel(interaction):
         await interaction.response.send_message("You cannot use this command in this channel.", ephemeral=True)
@@ -258,6 +273,7 @@ async def pack_create(interaction: discord.Interaction, pack_name: str):
 
 @pack_group.command(name="delete", description="Delete a championship")
 @app_commands.describe(pack_name="The name of the championship to delete")
+@app_commands.autocomplete(pack_name=pack_autocomplete)
 async def pack_delete(interaction: discord.Interaction, pack_name: str):
     if not is_correct_channel(interaction):
         await interaction.response.send_message("You cannot use this command in this channel.", ephemeral=True)
@@ -277,6 +293,7 @@ async def pack_delete(interaction: discord.Interaction, pack_name: str):
 
 @pack_group.command(name="add_car", description="Add a car to a championship")
 @app_commands.describe(pack_name="The championship name", car_name="The EXACT folder name of the car in Assetto Corsa")
+@app_commands.autocomplete(pack_name=pack_autocomplete)
 async def pack_add_car(interaction: discord.Interaction, pack_name: str, car_name: str):
     if not is_correct_channel(interaction):
         await interaction.response.send_message("You cannot use this command in this channel.", ephemeral=True)
@@ -296,6 +313,7 @@ async def pack_add_car(interaction: discord.Interaction, pack_name: str, car_nam
 
 @pack_group.command(name="remove_car", description="Remove a car from a championship")
 @app_commands.describe(pack_name="The championship name", car_name="The car folder name to remove")
+@app_commands.autocomplete(pack_name=pack_autocomplete)
 async def pack_remove_car(interaction: discord.Interaction, pack_name: str, car_name: str):
     if not is_correct_channel(interaction):
         await interaction.response.send_message("You cannot use this command in this channel.", ephemeral=True)
