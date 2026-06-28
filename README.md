@@ -8,6 +8,7 @@ A complete automated solution for managing, validating, and compiling Assetto Co
 * **Automatic Validation:** The backend automatically verifies the archive's structure (checks for `ui_skin.json` and the correct `content/cars/<car_name>` folder).
 * **Discord Notifications:** The bot sends a message in a specific Discord channel with the extracted `preview.jpg` whenever a valid skin is uploaded.
 * **Dynamic Pack Management:** Admins can create and manage championships directly from Discord using slash commands (no need to edit JSON files manually).
+* **Multi-Championship Support:** A single car can be registered in multiple championships. When a player uploads a skin for such a car, the bot will prompt them via interactive Discord buttons to select which championship the skin belongs to.
 * **Automated Compilation:** With a simple command, the bot aggregates all uploaded skins for a specific championship into a single, ready-to-use `.zip` file for players to download via Content Manager.
 * **Smart Zipping:** The compilation process is smart enough to include all historical skins for a pack, preventing lost uploads and ensuring players always download the complete pack.
 * **ACSM Integration:** Automatically extracts uploaded skins directly to the Assetto Corsa Server Manager (ACSM) cars directory so they are instantly playable on your server.
