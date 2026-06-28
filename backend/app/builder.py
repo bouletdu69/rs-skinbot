@@ -52,12 +52,7 @@ def save_settings(settings_dict):
     with open(config_path, "w") as f:
         json.dump(settings_dict, f, indent=2)
 
-def resolve_pack(car_name: str) -> Optional[str]:
-    packs = load_packs()
-    for pack_name, cars in packs.items():
-        if car_name in cars:
-            return pack_name
-    return None
+
 
 def list_archive_files(archive_path: str):
     result = subprocess.run(["7z", "l", "-slt", archive_path], capture_output=True, text=True, errors="replace")
@@ -109,9 +104,7 @@ def validate_and_extract_preview(zip_path: str, upload_id: str) -> Tuple[bool, s
         if not has_ui_skin:
             return False, "ui_skin.json file not found in the archive. This is not a valid skin.", None, None
         
-        pack_name = resolve_pack(detected_car_name)
-        if not pack_name:
-            return False, f"The car '{detected_car_name}' is not allowed in any current pack.", None, None
+
 
         if preview_file_in_zip:
             ext = Path(preview_file_in_zip).suffix
@@ -124,9 +117,9 @@ def validate_and_extract_preview(zip_path: str, upload_id: str) -> Tuple[bool, s
                 if extracted_file.exists():
                     shutil.move(str(extracted_file), str(preview_dest))
             
-            return True, "Valid skin.", preview_filename, pack_name
+            return True, "Valid skin.", preview_filename, detected_car_name
         else:
-            return True, "Valid skin (but no preview found).", None, pack_name
+            return True, "Valid skin (but no preview found).", None, detected_car_name
     except Exception as e:
         return False, f"Error reading the archive: {str(e)}", None, None
 

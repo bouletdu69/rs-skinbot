@@ -16,6 +16,32 @@ API_TOKEN = os.getenv("API_TOKEN", "default_insecure_token")
 PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost")
 SKIN_CHANNEL_ID = int(os.getenv("SKIN_CHANNEL_ID", "0"))
 
+class PackSelectionView(discord.ui.View):
+    def __init__(self, upload_id: str, discord_user_id: str, packs: list):
+        super().__init__(timeout=None)
+        self.upload_id = upload_id
+        self.discord_user_id = discord_user_id
+        for pack in packs:
+            button = discord.ui.Button(label=pack, style=discord.ButtonStyle.primary, custom_id=f"sel_{upload_id[:8]}_{pack}")
+            button.callback = self.make_callback(pack)
+            self.add_item(button)
+            
+    def make_callback(self, pack_name: str):
+        async def callback(interaction: discord.Interaction):
+            if str(interaction.user.id) != str(self.discord_user_id):
+                await interaction.response.send_message("❌ You can only select the pack for your own upload!", ephemeral=True)
+                return
+            
+            await interaction.response.defer()
+            async with aiohttp.ClientSession() as session:
+                async with session.post(f"{BACKEND_URL}/upload/{self.upload_id}/select_pack", params={"selected_pack": pack_name, "token": API_TOKEN}) as resp:
+                    if resp.status == 200:
+                        await interaction.message.delete()
+                    else:
+                        err = await resp.json()
+                        await interaction.followup.send(f"❌ Error: {err.get('detail')}", ephemeral=True)
+        return callback
+
 class SkinBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
@@ -30,6 +56,7 @@ class SkinBot(commands.Bot):
         app = web.Application()
         app.router.add_post('/notify_preview', self.handle_notify)
         app.router.add_post('/notify_build', self.handle_notify_build)
+        app.router.add_post('/notify_selection', self.handle_notify_selection)
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, '0.0.0.0', 8080)
@@ -111,6 +138,24 @@ class SkinBot(commands.Bot):
         except Exception as e:
             print(f"Error handling notification: {e}")
             print(f"Error handling notification: {e}")
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_notify_selection(self, request):
+        try:
+            data = await request.json()
+            upload_id = data.get("upload_id")
+            discord_user_id = data.get("discord_user_id")
+            username = data.get("username", "A player")
+            matched_packs = data.get("matched_packs", [])
+            
+            if SKIN_CHANNEL_ID:
+                channel = self.get_channel(SKIN_CHANNEL_ID)
+                if channel:
+                    view = PackSelectionView(upload_id, discord_user_id, matched_packs)
+                    msg = f"Hey <@{discord_user_id}> ! La voiture que tu as envoyée est inscrite dans plusieurs championnats.\n**Choisis le championnat pour ce skin :**"
+                    await channel.send(content=msg, view=view)
+            return web.json_response({"status": "ok"})
+        except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 
     async def handle_notify_build(self, request):

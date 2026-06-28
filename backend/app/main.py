@@ -76,20 +76,32 @@ async def upload_skin(
             buffer.write(content)
             
     # Validate the uploaded zip
-    is_valid, msg, preview_filename, pack_name = validate_and_extract_preview(save_path, upload_id)
+    is_valid, msg, preview_filename, car_dir_name = validate_and_extract_preview(save_path, upload_id)
     
     if not is_valid:
         os.remove(save_path) # Clean up invalid file
         raise HTTPException(status_code=400, detail=msg)
 
+    # Find which pack this car belongs to
+    matched_packs = []
+    for p_name, cars in load_packs().items():
+        if car_dir_name in cars:
+            matched_packs.append(p_name)
+    
+    if not matched_packs:
+        os.remove(save_path)
+        raise HTTPException(status_code=400, detail=f"La voiture '{car_dir_name}' n'est autorisée dans aucun championnat actuel")
+
     # Save to database
+    is_multiple = len(matched_packs) > 1
     new_upload = SkinUpload(
         id=upload_id,
         discord_user_id=discord_user_id,
         discord_username=discord_username,
         original_filename=file.filename,
         internal_filename=internal_filename,
-        pack_name=pack_name
+        pack_name=matched_packs[0] if not is_multiple else None,
+        status="uploaded" if not is_multiple else "pending_selection"
     )
     db.add(new_upload)
     db.commit()
@@ -98,26 +110,40 @@ async def upload_skin(
 
     # Notify the bot
     try:
-        requests.post("http://bot:8080/notify_preview", json={
-            "upload_id": upload_id,
-            "preview_url": preview_url,
-            "username": discord_username,
-            "pack_name": pack_name
-        }, timeout=5)
+        if is_multiple:
+            requests.post("http://bot:8080/notify_selection", json={
+                "upload_id": upload_id,
+                "discord_user_id": discord_user_id,
+                "username": discord_username,
+                "matched_packs": matched_packs
+            }, timeout=5)
+            return {
+                "status": "pending_selection", 
+                "upload_id": upload_id, 
+                "message": "Votre voiture est inscrite dans plusieurs championnats. Vérifiez vos messages Discord pour sélectionner le championnat !"
+            }
+        else:
+            requests.post("http://bot:8080/notify_preview", json={
+                "upload_id": upload_id,
+                "preview_url": preview_url,
+                "username": discord_username,
+                "pack_name": matched_packs[0]
+            }, timeout=5)
     except Exception as e:
         print(f"Failed to notify bot: {e}")
         
     settings = load_settings()
     upload_mode = settings.get("upload_mode", "direct")
     
-    # Extract to ACSM if mode permits
-    acsm_dir = os.getenv("ACSM_CARS_DIR")
-    if acsm_dir and upload_mode in ["direct", "both"]:
-        background_tasks.add_task(extract_to_acsm, save_path, acsm_dir)
+    if not is_multiple:
+        # Extract to ACSM if mode permits
+        acsm_dir = os.getenv("ACSM_CARS_DIR")
+        if acsm_dir and upload_mode in ["direct", "both"]:
+            background_tasks.add_task(extract_to_acsm, save_path, acsm_dir)
 
-    # Build pack if mode permits
-    if upload_mode in ["pack_only", "both"]:
-        background_tasks.add_task(build_pack_task, pack_name)
+        # Build pack if mode permits
+        if upload_mode in ["pack_only", "both"]:
+            background_tasks.add_task(build_pack_task, matched_packs[0])
 
     return {
         "status": "success", 
@@ -126,6 +152,52 @@ async def upload_skin(
         "message": msg,
         "preview_url": preview_url
     }
+
+@app.post("/upload/{upload_id}/select_pack")
+def select_pack(
+    upload_id: str,
+    selected_pack: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    token: str = Depends(verify_token)
+):
+    upload = db.query(SkinUpload).filter(SkinUpload.id == upload_id).first()
+    if not upload:
+        raise HTTPException(status_code=404, detail="Upload introuvable")
+        
+    if upload.status != "pending_selection":
+        raise HTTPException(status_code=400, detail="Cet upload n'est pas en attente de sélection")
+
+    upload.pack_name = selected_pack
+    upload.status = "uploaded"
+    db.commit()
+
+    settings = load_settings()
+    upload_mode = settings.get("upload_mode", "direct")
+    save_path = f"/app/tmp_builds/{upload.internal_filename}"
+
+    # Extract to ACSM if mode permits
+    acsm_dir = os.getenv("ACSM_CARS_DIR")
+    if acsm_dir and upload_mode in ["direct", "both"]:
+        background_tasks.add_task(extract_to_acsm, save_path, acsm_dir)
+
+    # Build pack if mode permits
+    if upload_mode in ["pack_only", "both"]:
+        background_tasks.add_task(build_pack_task, selected_pack)
+
+    # Notify bot for preview
+    preview_filename = f"{upload_id}.jpg" if os.path.exists(f"/app/previews/{upload_id}.jpg") else None
+    try:
+        requests.post("http://bot:8080/notify_preview", json={
+            "upload_id": upload_id,
+            "preview_url": f"/previews/{preview_filename}" if preview_filename else None,
+            "username": upload.discord_username,
+            "pack_name": selected_pack
+        }, timeout=5)
+    except Exception as e:
+        print(f"Failed to notify bot: {e}")
+
+    return {"status": "success", "pack_name": selected_pack}
 
 @app.post("/build")
 def trigger_build(pack_name: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db), token: str = Depends(verify_token)):
@@ -217,11 +289,7 @@ def add_car_to_pack(pack_name: str, car_name: str, token: str = Depends(verify_t
     if car_name in packs[pack_name]:
         raise HTTPException(status_code=400, detail="Car already in pack")
     
-    # Check if car exists in another pack? (Optional, but good for AC structure since folder name maps to pack)
-    for p_name, cars in packs.items():
-        if car_name in cars:
-            raise HTTPException(status_code=400, detail=f"Car already exists in pack '{p_name}'")
-            
+
     packs[pack_name].append(car_name)
     save_packs(packs)
     return {"status": "success", "pack": pack_name, "car_added": car_name}
