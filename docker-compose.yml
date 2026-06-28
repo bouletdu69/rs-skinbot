@@ -73,6 +73,7 @@ services:
       - BACKEND_URL=http://backend:8000
       - API_TOKEN=${API_TOKEN}
       - SKIN_CHANNEL_ID=${SKIN_CHANNEL_ID}
+      - PUBLIC_URL=${PUBLIC_URL}
     depends_on:
       backend:
         condition: service_healthy
