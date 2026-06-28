@@ -8,6 +8,7 @@ import time
 from aiohttp import web
 import asyncio
 import typing
+import urllib.parse
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
@@ -120,7 +121,8 @@ class SkinBot(commands.Bot):
             if SKIN_CHANNEL_ID:
                 channel = self.get_channel(SKIN_CHANNEL_ID)
                 if channel:
-                    await channel.send(f"🚀 **New skinpack available !**\nThe `{pack_name}` pack has just been updated.\nContent Manager link: {PUBLIC_URL}/packs/{pack_name}.zip?v={int(time.time())}")
+                    encoded_pack_name = urllib.parse.quote(pack_name)
+                    await channel.send(f"🚀 **New skinpack available !**\nThe `{pack_name}` pack has just been updated.\nContent Manager link: {PUBLIC_URL}/packs/{encoded_pack_name}.zip?v={int(time.time())}")
             return web.json_response({"status": "ok"})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
@@ -170,7 +172,8 @@ async def build_pack(interaction: discord.Interaction, pack_name: typing.Optiona
                             err_msg = f"HTTP {response.status}"
                         await interaction.followup.send(f"❌ Error: {err_msg}")
                         return
-            await interaction.followup.send(f"⏳ The compilation of the `{pack_name}` pack has started ! The archive will soon be available at {PUBLIC_URL}/packs/{pack_name}.zip?v={int(time.time())}")
+            encoded_pack_name = urllib.parse.quote(pack_name)
+            await interaction.followup.send(f"⏳ The compilation of the `{pack_name}` pack has started ! The archive will soon be available at {PUBLIC_URL}/packs/{encoded_pack_name}.zip?v={int(time.time())}")
         else:
             async with aiohttp.ClientSession() as session:
                 async with session.post(f"{BACKEND_URL}/build_all", params={"token": API_TOKEN}) as response:
