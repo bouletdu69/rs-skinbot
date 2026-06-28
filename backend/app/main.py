@@ -120,7 +120,7 @@ async def upload_skin(
             return {
                 "status": "pending_selection", 
                 "upload_id": upload_id, 
-                "message": "Votre voiture est inscrite dans plusieurs championnats. Vérifiez vos messages Discord pour sélectionner le championnat !"
+                "message": "Your car is registered in multiple championships. Please check your Discord messages to select the correct one!"
             }
         else:
             requests.post("http://bot:8080/notify_preview", json={

@@ -152,7 +152,7 @@ class SkinBot(commands.Bot):
                 channel = self.get_channel(SKIN_CHANNEL_ID)
                 if channel:
                     view = PackSelectionView(upload_id, discord_user_id, matched_packs)
-                    msg = f"Hey <@{discord_user_id}> ! La voiture que tu as envoyée est inscrite dans plusieurs championnats.\n**Choisis le championnat pour ce skin :**"
+                    msg = f"Hey <@{discord_user_id}>! The car you uploaded is registered in multiple championships.\n**Please choose the championship for this skin:**"
                     await channel.send(content=msg, view=view)
             return web.json_response({"status": "ok"})
         except Exception as e:
