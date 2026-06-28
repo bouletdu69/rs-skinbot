@@ -196,6 +196,20 @@ def extract_to_acsm(zip_path: str, acsm_cars_dir: str):
             temp_dir_path = Path(temp_dir)
             subprocess.run(["7z", "x", zip_path, f"-o{temp_dir_path}", "-y"], capture_output=True)
             
+            for root, dirs, files in os.walk(temp_dir_path, topdown=False):
+                for name in files:
+                    if name.startswith("._") or name == ".DS_Store":
+                        try:
+                            os.remove(os.path.join(root, name))
+                        except Exception:
+                            pass
+                for name in dirs:
+                    if name.upper() == "__MACOSX" or name.startswith("._"):
+                        try:
+                            shutil.rmtree(os.path.join(root, name))
+                        except Exception:
+                            pass
+            
             cars_dir = None
             for root, dirs, files in os.walk(temp_dir_path):
                 if root.replace('\\', '/').lower().endswith('content/cars'):
