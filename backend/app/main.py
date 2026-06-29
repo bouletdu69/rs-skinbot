@@ -31,13 +31,14 @@ def auto_build_job():
             else:
                 unchanged.append(pack_name)
                 
-        try:
-            requests.post("http://bot:8080/notify_hourly_summary", json={
-                "updated": updated,
-                "unchanged": unchanged
-            }, timeout=5)
-        except Exception as e:
-            print(f"Failed to notify bot of hourly summary: {e}")
+        if updated:
+            try:
+                requests.post("http://bot:8080/notify_hourly_summary", json={
+                    "updated": updated,
+                    "unchanged": unchanged
+                }, timeout=5)
+            except Exception as e:
+                print(f"Failed to notify bot of hourly summary: {e}")
     except Exception as e:
         print(f"Auto-build job error: {e}")
     finally:
