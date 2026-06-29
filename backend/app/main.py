@@ -18,14 +18,26 @@ def auto_build_job():
     print("Running hourly auto-build...")
     db = SessionLocal()
     try:
-        skins = db.query(SkinUpload).filter(SkinUpload.status == "uploaded").all()
-        if skins:
-            pack_names = set(skin.pack_name for skin in skins)
-            for pack_name in pack_names:
+        packs = load_packs()
+        updated = []
+        unchanged = []
+        
+        for pack_name in packs.keys():
+            skins = db.query(SkinUpload).filter(SkinUpload.pack_name == pack_name, SkinUpload.status == "uploaded").all()
+            if skins:
+                updated.append(pack_name)
                 print(f"Starting auto-build for pack: {pack_name}")
-                build_pack_task(pack_name)
-        else:
-            print("No pending skins found. Skipping auto-build.")
+                build_pack_task(pack_name, notify=False)
+            else:
+                unchanged.append(pack_name)
+                
+        try:
+            requests.post("http://bot:8080/notify_hourly_summary", json={
+                "updated": updated,
+                "unchanged": unchanged
+            }, timeout=5)
+        except Exception as e:
+            print(f"Failed to notify bot of hourly summary: {e}")
     except Exception as e:
         print(f"Auto-build job error: {e}")
     finally:

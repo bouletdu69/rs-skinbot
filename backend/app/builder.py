@@ -123,7 +123,7 @@ def validate_and_extract_preview(zip_path: str, upload_id: str) -> Tuple[bool, s
     except Exception as e:
         return False, f"Error reading the archive: {str(e)}", None, None
 
-def build_pack_task(pack_name: str):
+def build_pack_task(pack_name: str, notify: bool = True):
     """
     Background task to extract all skins for a pack and zip them into a final archive atomically.
     """
@@ -162,13 +162,14 @@ def build_pack_task(pack_name: str):
             skin.status = "packed"
         db.commit()
         
-        # Notify the bot that the pack is ready
-        try:
-            requests.post("http://bot:8080/notify_build", json={
-                "pack_name": pack_name
-            }, timeout=5)
-        except Exception as e:
-            print(f"Failed to notify bot of manual build completion: {e}")
+        if notify:
+            # Notify the bot that the pack is ready
+            try:
+                requests.post("http://bot:8080/notify_build", json={
+                    "pack_name": pack_name
+                }, timeout=5)
+            except Exception as e:
+                print(f"Failed to notify bot of manual build completion: {e}")
             
     except Exception as e:
         print(f"Error building pack {pack_name}: {e}")

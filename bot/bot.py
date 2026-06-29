@@ -57,6 +57,7 @@ class SkinBot(commands.Bot):
         app.router.add_post('/notify_preview', self.handle_notify)
         app.router.add_post('/notify_build', self.handle_notify_build)
         app.router.add_post('/notify_selection', self.handle_notify_selection)
+        app.router.add_post('/notify_hourly_summary', self.handle_notify_hourly_summary)
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, '0.0.0.0', 8080)
@@ -167,7 +168,37 @@ class SkinBot(commands.Bot):
                 channel = self.get_channel(SKIN_CHANNEL_ID)
                 if channel:
                     encoded_pack_name = urllib.parse.quote(pack_name)
-                    await channel.send(f"🚀 **New skinpack available !**\nThe `{pack_name}` pack has just been updated.\nContent Manager link: {PUBLIC_URL}/packs/{encoded_pack_name}.zip?v={int(time.time())}")
+                    await channel.send(f"🚀 **New skinpack available !**\nThe `{pack_name}` pack has just been updated.\n[Download {pack_name} pack]({PUBLIC_URL}/packs/{encoded_pack_name}.zip?v={int(time.time())})")
+            return web.json_response({"status": "ok"})
+        except Exception as e:
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def handle_notify_hourly_summary(self, request):
+        try:
+            data = await request.json()
+            updated = data.get("updated", [])
+            unchanged = data.get("unchanged", [])
+            
+            if SKIN_CHANNEL_ID:
+                channel = self.get_channel(SKIN_CHANNEL_ID)
+                if channel:
+                    msg = "⏱️ **Hourly Skinpack Update**\n\n"
+                    if updated:
+                        msg += "✅ **Updated (New skins added):**\n"
+                        for p in updated:
+                            encoded_p = urllib.parse.quote(p)
+                            msg += f" - [{p}]({PUBLIC_URL}/packs/{encoded_p}.zip?v={int(time.time())})\n"
+                    else:
+                        msg += "✅ **Updated:** *(No packs had new skins)*\n"
+                        
+                    msg += "\n➖ **Unchanged:**\n"
+                    if unchanged:
+                        for p in unchanged:
+                            encoded_p = urllib.parse.quote(p)
+                            msg += f" - [{p}]({PUBLIC_URL}/packs/{encoded_p}.zip?v={int(time.time())})\n"
+                    else:
+                        msg += " *(None)*\n"
+                    await channel.send(msg)
             return web.json_response({"status": "ok"})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
@@ -233,7 +264,7 @@ async def build_pack(interaction: discord.Interaction, pack_name: typing.Optiona
                         await interaction.followup.send(f"❌ Error: {err_msg}")
                         return
             encoded_pack_name = urllib.parse.quote(pack_name)
-            await interaction.followup.send(f"⏳ The compilation of the `{pack_name}` pack has started ! The archive will soon be available at {PUBLIC_URL}/packs/{encoded_pack_name}.zip?v={int(time.time())}")
+            await interaction.followup.send(f"⏳ The compilation of the `{pack_name}` pack has started! The archive will soon be available here: [Download {pack_name}]({PUBLIC_URL}/packs/{encoded_pack_name}.zip?v={int(time.time())})")
         else:
             async with aiohttp.ClientSession() as session:
                 async with session.post(f"{BACKEND_URL}/build_all", params={"token": API_TOKEN}) as response:
@@ -249,14 +280,16 @@ async def build_pack(interaction: discord.Interaction, pack_name: typing.Optiona
                     if updated:
                         msg += "✅ **Updated (New skins):**\n"
                         for p in updated:
-                            msg += f" - `{p}`\n"
+                            encoded_p = urllib.parse.quote(p)
+                            msg += f" - [{p}]({PUBLIC_URL}/packs/{encoded_p}.zip?v={int(time.time())})\n"
                     else:
                         msg += "✅ **Updated:** *(No packs had new skins)*\n"
                         
                     msg += "\n➖ **Unchanged:**\n"
                     if unchanged:
                         for p in unchanged:
-                            msg += f" - `{p}`\n"
+                            encoded_p = urllib.parse.quote(p)
+                            msg += f" - [{p}]({PUBLIC_URL}/packs/{encoded_p}.zip?v={int(time.time())})\n"
                     else:
                         msg += " *(None)*\n"
                         
