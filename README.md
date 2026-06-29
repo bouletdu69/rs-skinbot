@@ -90,6 +90,7 @@ Once the bot is running and invited to your server, you can use the following sl
   * 📦 **`pack_only` (.zip Pack Only):** The bot automatically recompiles the complete `.zip` skinpack for players to download via Content Manager. The skin is *not* sent to the live game server automatically.
   * 🚀 **`both` (ACSM + Pack):** Performs both actions instantly. The skin is sent to the game server AND the `.zip` pack is rebuilt. Perfect for keeping both the server and players completely up to date in real-time.
   * ⏸️ **`manual` (No auto actions):** The uploaded skin is only saved in the database. No extraction to ACSM and no pack compilation happens automatically. You will need to manually use `/build_pack` to deploy the skins later (ideal during busy races where you want zero background processing).
+* `/config summary <mode>` : Configures the frequency and conditions for automated status reports.
 
 ## 📁 File Structure
 
