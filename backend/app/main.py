@@ -31,7 +31,27 @@ def auto_build_job():
             else:
                 unchanged.append(pack_name)
                 
+        settings = load_settings()
+        summary_mode = settings.get("summary_mode", "never_empty")
+        last_summary_was_empty = settings.get("last_summary_was_empty", False)
+        
+        should_send = False
+        
         if updated:
+            should_send = True
+            settings["last_summary_was_empty"] = False
+            save_settings(settings)
+        else:
+            if summary_mode == "always":
+                should_send = True
+            elif summary_mode == "once_on_empty":
+                if not last_summary_was_empty:
+                    should_send = True
+                    settings["last_summary_was_empty"] = True
+                    save_settings(settings)
+            # if never_empty, should_send remains False
+            
+        if should_send:
             try:
                 requests.post("http://bot:8080/notify_hourly_summary", json={
                     "updated": updated,

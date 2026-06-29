@@ -429,6 +429,7 @@ async def config_view(interaction: discord.Interaction):
                 
         embed = discord.Embed(title="⚙️ Current Configuration", color=discord.Color.green())
         upload_mode = settings.get("upload_mode", "direct")
+        summary_mode = settings.get("summary_mode", "never_empty")
         
         descriptions = {
             "direct": "➡️ **Direct Upload to ACSM.** The skin will be instantly available on the game server, but the .zip archive for other players will not be built immediately.",
@@ -437,9 +438,39 @@ async def config_view(interaction: discord.Interaction):
             "manual": "⏸️ **Manual (No auto actions).** The skin is just saved in the database. You'll need to use `/build_pack` to send everything later."
         }
         
+        summary_desc = {
+            "always": "🔄 **Always.** Send the summary every hour, even if no skins were updated.",
+            "once_on_empty": "1️⃣ **Only once if empty.** Send exactly 1 empty summary, then stop until new skins arrive.",
+            "never_empty": "🔇 **Never if empty.** Only send the summary if new skins were updated."
+        }
+        
         embed.add_field(name="Currently Active Upload Mode", value=f"**Mode : `{upload_mode}`**\n\n{descriptions.get(upload_mode, 'Unknown')}", inline=False)
+        embed.add_field(name="Hourly Summary Rule", value=f"**Mode : `{summary_mode}`**\n\n{summary_desc.get(summary_mode, 'Unknown')}", inline=False)
             
         await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}")
+
+@config_group.command(name="summary", description="Set the hourly summary rule when no skins were updated")
+@app_commands.describe(mode="Choose the summary mode")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="Always - Always send the summary", value="always"),
+    app_commands.Choice(name="Only once if empty - Send 1 empty summary, then stop", value="once_on_empty"),
+    app_commands.Choice(name="Never if empty - Only send when skins are updated", value="never_empty")
+])
+async def config_summary(interaction: discord.Interaction, mode: app_commands.Choice[str]):
+    if not is_correct_channel(interaction):
+        await interaction.response.send_message("You cannot use this command in this channel.", ephemeral=True)
+        return
+        
+    await interaction.response.defer()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/settings", json={"summary_mode": mode.value}, params={"token": API_TOKEN}) as response:
+                if response.status != 200:
+                    await interaction.followup.send(f"❌ Error HTTP {response.status}")
+                    return
+        await interaction.followup.send(f"✅ Hourly summary mode updated to: `{mode.name}`")
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {e}")
 
